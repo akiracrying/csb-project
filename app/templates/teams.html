@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Teams - TaskFlow{% endblock %}
+{% block content %}
+<h1>Teams</h1>
+<button class="btn" onclick="showCreateForm()">Create Team</button>
+<div id="createForm" style="display:none; margin: 20px 0;">
+    <input type="text" id="teamName" placeholder="Team name">
+    <input type="text" id="teamDesc" placeholder="Description">
+    <button class="btn" onclick="createTeam()">Create</button>
+</div>
+<div id="teams"></div>
+<script>
+    function getToken() {
+        const localToken = localStorage.getItem('token');
+        if (localToken) return localToken;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+    
+    const token = getToken();
+    if (!token) {
+        console.error('No token found, redirecting to login');
+        window.location.href = '/login';
+        throw new Error('No token');
+    }
+    
+    fetch('/api/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => {
+        if (!r.ok) {
+            window.location.href = '/login';
+            throw new Error('Not authenticated');
+        }
+        return r.json();
+    })
+    .catch(err => {
+        window.location.href = '/login';
+    });
+    
+    async function loadTeams() {
+        console.log('Loading teams with token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+        const res = await fetch('/api/teams', {
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Response status:', res.status);
+        if (!res.ok) {
+            const error = await res.json();
+            console.error('Error loading teams:', error);
+            document.getElementById('teams').innerHTML = `<p class="error">Error: ${error.error || 'Failed to load teams'}</p>`;
+            return;
+        }
+        const teams = await res.json();
+        console.log('Teams loaded:', teams);
+        if (teams.length === 0) {
+            document.getElementById('teams').innerHTML = '<p>You are not a member of any teams yet. Create your first team!</p>';
+            return;
+        }
+        document.getElementById('teams').innerHTML = teams.map(t => 
+            `<div class="task-card">
+                <h3>${t.name} <small style="color: #666; font-weight: normal;">(ID: ${t.id})</small></h3>
+                <p>${t.description || 'No description'}</p>
+                <div style="margin-top: 15px;">
+                    <a href="/tasks?team_id=${t.id}" class="btn" style="display: inline-block; text-decoration: none; margin-right: 10px;">View Tasks</a>
+                    <button class="btn" onclick="addMember(${t.id})" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">Add Member</button>
+                </div>
+            </div>`
+        ).join('');
+    }
+    
+    async function addMember(teamId) {
+        const username = prompt('Enter username to add to team:');
+        if (!username) return;
+        
+        try {
+            const res = await fetch(`/api/teams/${teamId}/members`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert('Member added successfully!');
+            } else {
+                alert('Error: ' + (result.error || 'Failed to add member'));
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+        }
+    }
+    
+    function showCreateForm() {
+        document.getElementById('createForm').style.display = 'block';
+    }
+    
+    async function createTeam() {
+        const name = document.getElementById('teamName').value;
+        const desc = document.getElementById('teamDesc').value;
+        const res = await fetch('/api/teams', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, description: desc })
+        });
+        if (res.ok) {
+            loadTeams();
+            document.getElementById('createForm').style.display = 'none';
+        }
+    }
+    
+    loadTeams();
+</script>
+{% endblock %}
+

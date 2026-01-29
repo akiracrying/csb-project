@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Users - TaskFlow{% endblock %}
+{% block content %}
+<h1>User Management</h1>
+<div style="margin: 20px 0;">
+    <input type="text" id="search" placeholder="Search users..." style="width: 300px; padding: 8px;">
+    <button class="btn" onclick="searchUsers()">Search</button>
+    <button class="btn" onclick="loadUsers()">Show All</button>
+</div>
+<div id="users"></div>
+<script>
+    function getToken() {
+        const localToken = localStorage.getItem('token');
+        if (localToken) return localToken;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+    
+    const token = getToken();
+    if (!token) window.location.href = '/login';
+    
+    async function loadUsers() {
+        const res = await fetch('/api/users', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 403) {
+            document.getElementById('users').innerHTML = '<p class="error">Access denied</p>';
+            return;
+        }
+        const users = await res.json();
+        displayUsers(users);
+    }
+    
+    async function searchUsers() {
+        const search = document.getElementById('search').value;
+        const res = await fetch('/api/users?search=' + encodeURIComponent(search), {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const users = await res.json();
+        displayUsers(users);
+    }
+    
+    function displayUsers(users) {
+        document.getElementById('users').innerHTML = 
+            '<table><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr>' +
+            users.map(u => 
+                `<tr>
+                    <td>${u.id}</td>
+                    <td>${u.username}</td>
+                    <td>${u.email}</td>
+                    <td>${u.role}</td>
+                    <td>
+                        <button onclick="deleteUser(${u.id})">Delete</button>
+                    </td>
+                </tr>`
+            ).join('') + '</table>';
+    }
+    
+    async function deleteUser(id) {
+        if (!confirm('Delete user?')) return;
+        const res = await fetch('/api/users/' + id, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) loadUsers();
+    }
+    
+    loadUsers();
+</script>
+{% endblock %}
+

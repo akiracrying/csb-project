@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TaskFlow{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { 
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            padding: 15px 0;
+            margin-bottom: 30px;
+        }
+        nav { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        nav a { 
+            color: #333;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover { color: #667eea; }
+        .content { 
+            background: white;
+            padding: 30px;
+            margin-top: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 2em;
+        }
+        .btn { 
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .btn:active { transform: translateY(0); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-group input, .form-group textarea, .form-group select { 
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        table { 
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table th, table td { 
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        table tr:hover {
+            background: #f8f9fa;
+        }
+        .error { 
+            color: #dc3545;
+            margin: 15px 0;
+            padding: 12px;
+            background: #f8d7da;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+        }
+        .success { 
+            color: #28a745;
+            margin: 15px 0;
+            padding: 12px;
+            background: #d4edda;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        .task-card {
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            transition: all 0.3s;
+            background: white;
+        }
+        .task-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+        .task-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .task-card p {
+            color: #666;
+            margin: 8px 0;
+        }
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-todo { background: #ffeaa7; color: #d63031; }
+        .badge-progress { background: #74b9ff; color: #fff; }
+        .badge-done { background: #00b894; color: #fff; }
+        .badge-low { background: #dfe6e9; color: #636e72; }
+        .badge-medium { background: #fdcb6e; color: #d63031; }
+        .badge-high { background: #e17055; color: #fff; }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover { color: #000; }
+        .json-view {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div>
+                <a href="/">TaskFlow</a>
+                <a href="/teams">Teams</a>
+                <a href="/tasks">Tasks</a>
+            </div>
+            <div id="user-info">
+                <a href="/login" style="color: #333; text-decoration: none;">Login</a>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    <script>
+        function getToken() {
+            return localStorage.getItem('token') || getCookie('token');
+        }
+        
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+        
+        function updateUserInfo() {
+            const token = getToken();
+            if (!token) {
+                document.getElementById('user-info').innerHTML = 
+                    `<a href="/login" style="color: #333; text-decoration: none;">Login</a>`;
+                return;
+            }
+            
+            fetch('/api/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(r => {
+                if (r.ok) {
+                    return r.json();
+                } else {
+                    throw new Error('Not authenticated');
+                }
+            })
+            .then(data => {
+                if (data && data.username) {
+                    document.getElementById('user-info').innerHTML = 
+                        `<span style="margin-right: 15px;">${data.username} <small style="color: #666;">(${data.role})</small></span>
+                         <button class="btn" onclick="logout()" style="padding: 8px 16px; font-size: 14px;">Logout</button>`;
+                } else {
+                    throw new Error('No user data');
+                }
+            })
+            .catch(err => {
+                console.error('Failed to get user info:', err);
+                document.getElementById('user-info').innerHTML = 
+                    `<a href="/login" style="color: #333; text-decoration: none;">Login</a>`;
+            });
+        }
+        
+        updateUserInfo();
+        
+        setInterval(updateUserInfo, 5000);
+        
+        function logout() {
+            localStorage.removeItem('token');
+            document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/login';
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

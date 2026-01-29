@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Activity Logs - TaskFlow{% endblock %}
+{% block content %}
+<h1>Activity Logs</h1>
+<div id="logs"></div>
+<script>
+    function getToken() {
+        const localToken = localStorage.getItem('token');
+        if (localToken) return localToken;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; token=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+    
+    const token = getToken();
+    if (!token) window.location.href = '/login';
+    
+    async function loadLogs() {
+        const res = await fetch('/api/logs', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 403) {
+            document.getElementById('logs').innerHTML = '<p class="error">Access denied</p>';
+            return;
+        }
+        const logs = await res.json();
+        document.getElementById('logs').innerHTML = 
+            '<table><tr><th>ID</th><th>User</th><th>Action</th><th>Details</th><th>IP</th><th>Time</th></tr>' +
+            logs.map(l => 
+                `<tr>
+                    <td>${l.id}</td>
+                    <td>${l.username || l.user_id}</td>
+                    <td>${l.action}</td>
+                    <td>${l.details || ''}</td>
+                    <td>${l.ip_address || ''}</td>
+                    <td>${l.created_at || ''}</td>
+                </tr>`
+            ).join('') + '</table>';
+    }
+    
+    loadLogs();
+</script>
+{% endblock %}
+

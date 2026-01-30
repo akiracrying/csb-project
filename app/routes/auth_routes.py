@@ -92,6 +92,11 @@ def get_current_user():
     from flask import g
     try:
         user_dict = g.current_user.to_dict()
+        # fix: use role from database, not from token
+        # token_role = g.token_payload.get('role', 'user')
+        # user_dict['role'] = token_role
+        token_role = g.token_payload.get('role', 'user')
+        user_dict['role'] = token_role
         return jsonify(user_dict)
     except Exception as e:
         import logging

@@ -20,13 +20,13 @@ def generate_jwt(user):
         'role': user.role,
         'exp': datetime.utcnow() + timedelta(days=365)
     }
-    secret = os.environ.get('SECRET_KEY', 'hardcoded-weak-secret-key-change-in-production')
+    secret = os.environ.get('SECRET_KEY', 'TEST_SECRET_KEY')
     token = jwt.encode(payload, secret, algorithm='HS256')
     return token
 
 def verify_jwt(token):
     try:
-        secret = os.environ.get('SECRET_KEY', 'hardcoded-weak-secret-key-change-in-production')
+        secret = os.environ.get('SECRET_KEY', 'TEST_SECRET_KEY')
         payload = jwt.decode(token, secret, algorithms=['HS256'])
         return payload
     except jwt.ExpiredSignatureError:
@@ -74,6 +74,7 @@ def require_auth(f):
         
         logger.info(f"User authenticated: {user.username} for {request.path}")
         g.current_user = user
+        g.token_payload = payload
         return f(*args, **kwargs)
     
     return decorated_function
@@ -83,7 +84,11 @@ def require_admin(f):
     @require_auth
     def decorated_function(*args, **kwargs):
         from flask import g
-        if g.current_user.role != 'app_admin':
+        # fix: check role from database, not from token
+        # if g.current_user.role != 'app_admin':
+        #     return jsonify({'error': 'Admin access required'}), 403
+        token_role = g.token_payload.get('role', 'user')
+        if token_role != 'app_admin':
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     

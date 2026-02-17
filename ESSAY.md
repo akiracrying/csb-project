@@ -8,18 +8,21 @@ Installation instructions:
 
 How to find vulnerabilities and fixes in code:
 All vulnerable code blocks and their fixes are marked with comments in the source files.
-Vulnerable code: 
 
+Vulnerable code: 
+```
  # --- VULN: FLAW n - ... ---  
  ...  
  # --- END VULN ---
+```
+and
 
 Fixed code:      
-
+```
  # --- FIX: FLAW n - ... ---   
  ... 
  # --- END FIX ---
-
+```
 To apply a fix comment out the VULN block and uncomment the FIX block below it
 
 To revert to vulnerable version uncomment the VULN block and comment out the FIX block

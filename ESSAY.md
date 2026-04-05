@@ -27,7 +27,7 @@ To apply a fix comment out the VULN block and uncomment the FIX block below it
 
 To revert to vulnerable version uncomment the VULN block and comment out the FIX block
 
-This project uses the OWASP Top 10 2021 list.
+This project uses the OWASP Top 10 2021 list
 
 FLAW 1:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/task_routes.py#L26
@@ -63,11 +63,11 @@ FLAW 4:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/auth_routes.py#L46 and https://github.com/akiracrying/csb-project/blob/main/app/auth.py#L56
 OWASP 2021: A02 - Cryptographic Failures
 
-The application mishandles sensitive authentication data in multiple ways. JWT tokens are stored in cookies with httponly=False on lines 47 and 104 of auth_routes.py, allowing client-side JavaScript to read authentication tokens via document.cookie. The cookie also lacks the secure flag, meaning the token can be transmitted over unencrypted HTTP connections and intercepted through man-in-the-middle attacks. Additionally, JWT token values are partially logged in plaintext to server log files on lines 57 and 70 of auth.py, exposing sensitive credential data in logs.
+The JWT cookie is set with httponly=False (lines 47 and 104 of auth_routes.py), which means any JavaScript on the page can read it via document.cookie. There's no secure flag either, so the token travels over plain HTTP. On top of that, token values get logged in plaintext (lines 57 and 70 of auth.py)
 
-An attacker can exploit this by opening the browser developer console and running document.cookie to read the full JWT token. The stolen token can then be used to impersonate the user from another browser or device. If combined with a cross-site scripting vulnerability, an attacker's script could automatically exfiltrate tokens from all users. Token data in server log files could also be accessed by anyone with read access to the logs directory. Screenshots flaw-4-before-1.png and flaw-4-after-1.png demonstrate this vulnerability.
+Open the browser console, type document.cookie, and you'll see the full JWT. Copy it, paste it into another browser, and you're logged in as that user. If there were an XSS vulnerability too, a script could steal tokens silently. And anyone who can read the server logs gets tokens for free. See flaw-4-before-1.png and flaw-4-after-1.png
 
-The fix requires setting httponly=True and secure=True on the cookie with samesite='Strict' for additional protection. The cookie fixes are commented out on lines 50 and 107 of auth_routes.py. Token values must also be removed from log messages; the fixes in auth.py on lines 59 and 72 replace token-exposing log messages with generic confirmations that do not reveal token contents.
+The fix sets httponly=True, secure=True, and samesite='Strict' on the cookie (commented out at lines 50 and 107 of auth_routes.py). The logging fixes ( 59 and 72 of auth.py) replace token values with generic messages.
 
 FLAW 5:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/__init__.py#L37 and https://github.com/akiracrying/csb-project/blob/main/app/auth.py#L15

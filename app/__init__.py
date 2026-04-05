@@ -115,21 +115,10 @@ def create_app():
     
     @app.errorhandler(Exception)
     def handle_error(e):
-        import traceback
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
-
-        # --- VULN: FLAW 4 - Cryptographic Failures / Info Disclosure ---
-        if app.config.get('DEBUG'):
-            return {'error': str(e), 'traceback': traceback.format_exc()}, 500
-        else:
-            return {'error': 'Internal server error'}, 500
-        # --- END VULN: FLAW 4 ---
-
-        # --- FIX: FLAW 4 - Always return generic error ---
-        # return {'error': 'Internal server error'}, 500
-        # --- END FIX: FLAW 4 ---
+        return {'error': 'Internal server error'}, 500
     
     return app
 

@@ -53,7 +53,12 @@ def require_auth(f):
         if auth_header:
             try:
                 token = auth_header.split(' ')[1]
+                # --- VULN: FLAW 4 - Cryptographic Failures, logging sensitive token ---
                 logger.info(f"Token extracted from header: {token[:20]}...")
+                # --- END VULN: FLAW 4 ---
+                # --- FIX: FLAW 4 - Cryptographic Failures, don't log token value ---
+                # logger.info("Token extracted from Authorization header")
+                # --- END FIX: FLAW 4 ---
             except IndexError:
                 logger.warning("Invalid token format in Authorization header")
                 return jsonify({'error': 'Invalid token format'}), 401
@@ -61,7 +66,12 @@ def require_auth(f):
         if not token:
             token = request.cookies.get('token')
             if token:
+                # --- VULN: FLAW 4 - Cryptographic Failures, logging sensitive token ---
                 logger.info(f"Token found in cookies: {token[:20]}...")
+                # --- END VULN: FLAW 4 ---
+                # --- FIX: FLAW 4 - Cryptographic Failures, don't log token value ---
+                # logger.info("Token found in cookies")
+                # --- END FIX: FLAW 4 ---
         
         if not token:
             logger.warning(f"No token found for {request.path}")

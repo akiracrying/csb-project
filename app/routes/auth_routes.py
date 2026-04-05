@@ -43,7 +43,13 @@ def register():
     db.session.commit()
     
     response = jsonify({'token': token, 'user': user.to_dict()})
+    # --- VULN: FLAW 4 - Cryptographic Failures, insecure cookie ---
     response.set_cookie('token', token, httponly=False, samesite='Lax')
+    # --- END VULN: FLAW 4 ---
+
+    # --- FIX: FLAW 4 - Cryptographic Failures, secure cookie ---
+    # response.set_cookie('token', token, httponly=True, secure=True, samesite='Strict')
+    # --- END FIX: FLAW 4 ---
     return response, 201
 
 @bp.route('/login', methods=['GET'])
@@ -94,7 +100,13 @@ def login():
     db.session.commit()
     
     response = jsonify({'token': token, 'user': user.to_dict()})
+    # --- VULN: FLAW 4 - Cryptographic Failures, insecure cookie ---
     response.set_cookie('token', token, httponly=False, samesite='Lax')
+    # --- END VULN: FLAW 4 ---
+
+    # --- FIX: FLAW 4 - Cryptographic Failures, secure cookie ---
+    # response.set_cookie('token', token, httponly=True, secure=True, samesite='Strict')
+    # --- END FIX: FLAW 4 ---
     return response, 200
 
 @bp.route('/api/me', methods=['GET'])

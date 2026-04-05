@@ -27,8 +27,11 @@ To apply a fix comment out the VULN block and uncomment the FIX block below it
 
 To revert to vulnerable version uncomment the VULN block and comment out the FIX block
 
+This project uses the OWASP Top 10 2021 list.
+
 FLAW 1:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/task_routes.py#L26
+OWASP 2021: A03 - Injection
 
 The application is vulnerable to SQL injection in the task search functionality. The get_tasks function in app/routes/task_routes.py constructs SQL queries using string concatenation without parameterization. When a user enters a search query, it is directly inserted into the SQL query string on line 26: query = f"SELECT * FROM tasks WHERE (title LIKE '%{search}%' OR description LIKE '%{search}%')". This allows an attacker to inject malicious SQL code.
 
@@ -38,6 +41,7 @@ The fix is to use parameterized queries through SQLAlchemy ORM instead of string
 
 FLAW 2:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/task_routes.py#L124
+OWASP 2021: A01 - Broken Access Control
 
 The application suffers from broken access control in the get_task function. When a user requests a specific task by ID through the /api/tasks/<task_id> endpoint, the application does not verify whether the user is a member of the team that owns the task. The function on line 119 retrieves the task on line 120 and immediately returns it without checking team membership.
 
@@ -46,25 +50,28 @@ An attacker can exploit this by logging in as bob, who is not a member of the Op
 The fix is to check team membership before returning the task. The fix is commented out starting at line 128. The code should query the TeamMember table to verify that the current user is a member of the task's team, or is an app_admin. If the user is not authorized, the function should return a 403 Forbidden error instead of the task data.
 
 FLAW 3:
-Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/auth_routes.py#L55
+Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/auth_routes.py#L61
+OWASP 2021: A07 - Identification and Authentication Failures
 
-The login function has two critical authentication flaws. First, there is no rate limiting on the login endpoint (line 55), allowing unlimited login attempts. Second, the function returns different error messages for different failure scenarios: "User not found" on line 73 when the username does not exist and "Invalid password" on line 76 when the username exists but the password is wrong. This enables user enumeration attacks.
+The login function has two critical authentication flaws. First, there is no rate limiting on the login endpoint (line 61), allowing unlimited login attempts. Second, the function returns different error messages for different failure scenarios: "User not found" on line 79 when the username does not exist and "Invalid password" on line 82 when the username exists but the password is wrong. This enables user enumeration attacks.
 
 An attacker can exploit this by attempting to log in with various usernames. If they receive "User not found", the username does not exist. If they receive "Invalid password", the username exists and they can proceed to brute force the password. Additionally, without rate limiting, an attacker can make unlimited login attempts without being blocked. Screenshots flaw-3-before-1.png, flaw-3-before-2.png and flaw-3-before-3.png demonstrate these issues.
 
-The fix requires two changes. First, add rate limiting using the @limiter.limit decorator, which is commented out on line 60. Second, use a generic error message for both cases to prevent user enumeration. The fix is commented out starting at line 80, which returns "Invalid username or password" for both scenarios, making it impossible to distinguish between non-existent users and wrong passwords.
+The fix requires two changes. First, add rate limiting using the @limiter.limit decorator, which is commented out on line 66. Second, use a generic error message for both cases to prevent user enumeration. The fix is commented out starting at line 86, which returns "Invalid username or password" for both scenarios, making it impossible to distinguish between non-existent users and wrong passwords.
 
 FLAW 4:
-Source: https://github.com/akiracrying/csb-project/blob/main/app/__init__.py#L123
+Source: https://github.com/akiracrying/csb-project/blob/main/app/routes/auth_routes.py#L46 and https://github.com/akiracrying/csb-project/blob/main/app/auth.py#L56
+OWASP 2021: A02 - Cryptographic Failures
 
-The application exposes sensitive information through error handling. The handle_error function in app/__init__.py returns full stack traces with file paths and internal code structure when an error occurs. On line 124, when DEBUG mode is enabled, the function returns both the error message and the complete traceback, which includes absolute file paths like C:\MyData\Programms\Conda\Lib\site-packages\flask\app.py.
+The application mishandles sensitive authentication data in multiple ways. JWT tokens are stored in cookies with httponly=False on lines 47 and 104 of auth_routes.py, allowing client-side JavaScript to read authentication tokens via document.cookie. The cookie also lacks the secure flag, meaning the token can be transmitted over unencrypted HTTP connections and intercepted through man-in-the-middle attacks. Additionally, JWT token values are partially logged in plaintext to server log files on lines 57 and 70 of auth.py, exposing sensitive credential data in logs.
 
-An attacker can exploit this by sending invalid requests to the API, such as POST requests to non-existent endpoints or with malformed data. The server responds with detailed stack traces that reveal the internal structure of the application, file system paths and potentially sensitive information about the deployment environment. Screenshot flaw-4-before-1.png shows a stack trace exposed in the browser console.
+An attacker can exploit this by opening the browser developer console and running document.cookie to read the full JWT token. The stolen token can then be used to impersonate the user from another browser or device. If combined with a cross-site scripting vulnerability, an attacker's script could automatically exfiltrate tokens from all users. Token data in server log files could also be accessed by anyone with read access to the logs directory. Screenshots flaw-4-before-1.png and flaw-4-after-1.png demonstrate this vulnerability.
 
-The fix is to never expose stack traces in responses, regardless of DEBUG mode. The fix is commented out on line 131, which always returns a generic "Internal server error" message. Stack traces should only be logged server-side for debugging purposes, never sent to the client. This prevents information disclosure while still allowing developers to debug issues through server logs.
+The fix requires setting httponly=True and secure=True on the cookie with samesite='Strict' for additional protection. The cookie fixes are commented out on lines 50 and 107 of auth_routes.py. Token values must also be removed from log messages; the fixes in auth.py on lines 59 and 72 replace token-exposing log messages with generic confirmations that do not reveal token contents.
 
 FLAW 5:
 Source: https://github.com/akiracrying/csb-project/blob/main/app/__init__.py#L37 and https://github.com/akiracrying/csb-project/blob/main/app/auth.py#L15
+OWASP 2021: A05 - Security Misconfiguration
 
 The application has multiple security misconfigurations. First, the SECRET_KEY is hardcoded to 'TEST_SECRET_KEY' on line 37 of app/__init__.py, making it trivial to forge JWT tokens. Second, JWT tokens have an expiration time of 365 days on line 15 of app/auth.py, which is excessively long. Third, CORS is configured to allow all origins on line 53 of app/__init__.py with CORS(app). Fourth, security headers are only set in production mode, not in development (line 102 of app/__init__.py).
 

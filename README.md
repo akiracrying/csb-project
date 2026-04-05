@@ -78,15 +78,17 @@ No rate limiting - can try to guess password infinitely. Also, different error m
 
 ### 4. Cryptographic Failures (A02:2021)
 
-**Location:** `app/__init__.py` function `handle_error()` (line ~110)
+**Location:** `app/routes/auth_routes.py` (cookie settings, lines ~47, ~104) and `app/auth.py` (token logging, lines ~57, ~70)
 
-**Issue:** On error, full stack trace is returned with file paths and internal code structure.
+**Issue:** JWT tokens stored in cookies with `httponly=False`, allowing JavaScript to read them via `document.cookie`. No `secure` flag either. Also, token values are partially logged in server log files.
 
 **How to exploit:**
-1. Send invalid request to API (e.g., POST to `/api/tasks` without data)
-2. Check response - you'll see full stack trace with file paths
+1. Login as any user
+2. Open browser console (F12 → Console)
+3. Type `document.cookie` — you'll see the full JWT token
+4. Copy it and use in another browser to impersonate the user
 
-**Fix:** Never expose stack traces, always return generic error message 
+**Fix:** Set `httponly=True, secure=True, samesite='Strict'` on cookies. Remove token values from log messages
 
 ---
 
